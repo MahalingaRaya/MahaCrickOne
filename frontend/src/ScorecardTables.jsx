@@ -3,7 +3,6 @@ import React from 'react';
 export default function ScorecardTables({ players = [], events = [], battingTeamId, bowlingTeamId, strikerId }) {
   const th = { color: '#e3b505', padding: '8px', borderBottom: '1px solid #333', textAlign: 'left', fontSize: '13px' };
   const td = { padding: '8px', borderBottom: '1px solid #222', fontSize: '13px' };
-
   const batPlrs = players.filter(p => p.team?.id === battingTeamId);
   const bwlPlrs = players.filter(p => p.team?.id === bowlingTeamId);
 
