@@ -69,7 +69,7 @@ function App() {
       const res = await fetch('https://mahacrickone.onrender.com/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playerName, role: playerRole, team: { id: selectedTeamId } })
+        body: JSON.stringify({ name: playerName, role: playerRole, team: { id: parseInt(selectedTeamId) } })
       })
       if (res.ok) { fetchPlayers(); setPlayerName(''); }
     } catch (error) { console.error(error) }
@@ -77,18 +77,41 @@ function App() {
 
   const handleAddMatch = async (e) => {
     e.preventDefault()
+    
+    if (!team1Id || !team2Id) {
+        alert("Please make sure you have created at least 2 teams first!")
+        return
+    }
     if (team1Id === team2Id) {
         alert("A team cannot play against itself!")
         return
     }
+    
     try {
+      // Force IDs to be Integers for Java
+      const payload = { 
+          team1: { id: parseInt(team1Id) }, 
+          team2: { id: parseInt(team2Id) }, 
+          totalOvers: parseInt(totalOvers) 
+      }
+      
       const res = await fetch('https://mahacrickone.onrender.com/api/matches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team1: { id: team1Id }, team2: { id: team2Id }, totalOvers: totalOvers })
+        body: JSON.stringify(payload)
       })
-      if (res.ok) { fetchMatches(); }
-    } catch (error) { console.error(error) }
+      
+      if (res.ok) { 
+          fetchMatches(); 
+          alert("Match Scheduled Successfully! ✅")
+      } else {
+          // If the backend fails, this will tell us exactly why
+          const errText = await res.text();
+          alert(`Backend Error (${res.status}): ` + errText)
+      }
+    } catch (error) { 
+        alert("Network Error: " + error.message) 
+    }
   }
 
   return (
@@ -154,7 +177,7 @@ function App() {
         {matches.length === 0 ? <p>No matches scheduled yet!</p> : (
           <ul style={{ listStyle: 'none', padding: 0 }}>
             {matches.map(match => (
-              <li key={match.id} style={{ padding: '15px', background: '#f4f4f4', marginBottom: '10px', borderRadius: '5px', borderLeft: '5px solid #28a745', textAlign: 'center', fontSize: '18px' }}>
+              <li key={match.id} style={{ padding: '15px', background: '#f4f4f4', marginBottom: '10px', borderRadius: '5px', borderLeft: '5px solid #28a745', textAlign: 'center', fontSize: '18px', color: '#000' }}>
                 <strong>{match.team1?.shortName || '?'} vs {match.team2?.shortName || '?'}</strong> <br/>
                 <span style={{ fontSize: '14px', color: '#555', background: '#e0e0e0', padding: '3px 8px', borderRadius: '12px' }}>{match.totalOvers} Overs • {match.status}</span>
               </li>
