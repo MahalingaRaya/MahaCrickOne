@@ -10,7 +10,6 @@ export default function App(){
   const [team1Id,setTeam1Id]=useState('');const [team2Id,setTeam2Id]=useState('');
   const [activeMatchId,setActiveMatchId]=useState('');const [batterId,setBatterId]=useState('');const [bowlerId,setBowlerId]=useState('');
   
-  // Innings tracking state
   const [currentInnings,setCurrentInnings]=useState(1);
 
   useEffect(()=>{fetchTeams();fetchPlayers();fetchMatches();},[]);
@@ -24,16 +23,8 @@ export default function App(){
   const handleAddPlayer=async(e)=>{e.preventDefault();await fetch('https://mahacrickone.onrender.com/api/players',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:playerName,role:'Batsman',team:{id:parseInt(selectedTeamId)}})});fetchPlayers();setPlayerName('');};
   const handleAddMatch=async(e)=>{e.preventDefault();await fetch('https://mahacrickone.onrender.com/api/matches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team1Id:team1Id.toString(),team2Id:team2Id.toString(),totalOvers:"20"})});fetchMatches();alert("Match Scheduled!");};
 
-  // --- COMPREHENSIVE EVENT-SOURCED INNINGS ENGINE ---
-  const getInningsRuns=(inn)=>events.filter(e=>e.overNumber!==null).reduce((s,e)=>{
-    if(e.overNumber >= 100 && inn===1) return s; // Filter logic marker for safety
-    // For this simplified engine, we filter directly by an arbitrary over boundary or build straight array splits
-    return s;
-  },0);
-
-  // Separate events by explicit innings markers
-  const inn1Events = events.filter(e => e.overNumber < 50); // Innings 1 virtual space
-  const inn2Events = events.filter(e => e.overNumber >= 50); // Innings 2 virtual space
+  const inn1Events = events.filter(e => e.overNumber < 50); 
+  const inn2Events = events.filter(e => e.overNumber >= 50); 
 
   const inn1Runs = inn1Events.reduce((s,ev)=>s+ev.runs+(ev.extraType==='WIDE'||ev.extraType==='NO_BALL'?1:0),0);
   const inn1Wickets = inn1Events.filter(e=>e.wicket).length;
@@ -43,13 +34,11 @@ export default function App(){
   const inn2Wickets = inn2Events.filter(e=>e.wicket).length;
   const inn2Balls = inn2Events.filter(e=>e.extraType!=='WIDE'&&e.extraType!=='NO_BALL').length;
 
-  // Active display context values
   const displayRuns = currentInnings === 1 ? inn1Runs : inn2Runs;
   const displayWickets = currentInnings === 1 ? inn1Wickets : inn2Wickets;
   const activeLegalBalls = currentInnings === 1 ? inn1Balls : inn2Balls;
   const calcOvers = Math.floor(activeLegalBalls/6);const calcBalls = activeLegalBalls%6;
 
-  // Player Stats
   const strikerEvents = events.filter(e=>e.batterId===parseInt(batterId));
   const strikerRuns=strikerEvents.reduce((s,e)=>(e.extraType==='WIDE'||e.extraType==='LEG_BYE'||e.extraType==='BYE')?s:s+e.runs,0);
   const strikerBallsFaced=strikerEvents.filter(e=>e.extraType!=='WIDE').length;
@@ -67,17 +56,16 @@ export default function App(){
   const thisOverEvents=events.filter(e=>e.overNumber===(currentInnings===1?currentOverTracker:currentOverTracker+50));
 
   const handleScoreBall=async(runs,isWicket=false,extraType=null)=>{
-    // Offset the over number on the backend for innings 2 to separate the streams perfectly
     const virtualOver = currentInnings === 1 ? calcOvers : calcOvers + 50;
     try{
-      await fetch('https://mahacrickone.onrender.com/api/events',{method:'POST',headers PallId:{'Content-Type':'application/json'},body:JSON.stringify({matchId:parseInt(activeMatchId),batterId:parseInt(batterId),bowlerId:parseInt(bowlerId),overNumber:virtualOver,ballNumber:calcBalls+1,runs,wicket:isWicket,extraType})});
+      await fetch('https://mahacrickone.onrender.com/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId:parseInt(activeMatchId),batterId:parseInt(batterId),bowlerId:parseInt(bowlerId),overNumber:virtualOver,ballNumber:calcBalls+1,runs,wicket:isWicket,extraType})});
       const u=await fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json());setEvents(u);
     }catch(e){alert(e.message);}
   };
 
   const handleUndo=async()=>{if(events.length===0)return;const last=events[events.length-1];await fetch(`https://mahacrickone.onrender.com/api/events/${last.id}`,{method:'DELETE'});const u=await fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json());setEvents(u);};
   
-  const isReadyToScore=activeMatchId!=''&&batterId!=''&&bowlerId!='';
+  const isReadyToScore=activeMatchId!==''&&batterId!==''&&bowlerId!=='';
   const activeMatch=matches.find(m=>m.id.toString()===activeMatchId.toString());
 
   const btnStyle={flex:1,padding:'12px 0',backgroundColor:'#333',color:'#ccc',border:'none',borderRadius:'5px',fontWeight:'bold'};
@@ -93,7 +81,6 @@ export default function App(){
       <div style={{maxWidth:'600px',margin:'0 auto',padding:'0 10px'}}>
         {activePage==='match'&&(<div>
           
-          {/* RUN CHASE HEADER BANNER */}
           {currentInnings===2&&(
             <div style={{background:'#e3b505',color:'#000',padding:'10px',borderRadius:'8px',textAlign:'center',fontWeight:'bold',marginBottom:'15px',fontSize:'15px'}}>
               🎯 TARGET: {inn1Runs+1} | Need { (inn1Runs+1)-inn2Runs } runs in { 120-inn2Balls } balls
@@ -110,7 +97,6 @@ export default function App(){
                 <span>INNINGS: <span style={{color:'#fff'}}>{currentInnings}</span></span>
               </div>
               
-              {/* INNINGS CONTROL SWITCH */}
               <button onClick={()=>setCurrentInnings(currentInnings===1?2:1)} style={{marginTop:'12px',padding:'6px 15px',background:'#222',color:'#e3b505',border:'1px solid #e3b505',borderRadius:'4px',fontSize:'12px',fontWeight:'bold'}}>
                 Switch to Innings {currentInnings===1?2:1}
               </button>
@@ -118,11 +104,11 @@ export default function App(){
 
             <div style={{background:'#1a1a1a',padding:'15px',borderTop:'1px solid #333'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px',paddingBottom:'10px',borderBottom:'1px solid #2a2a2a'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span>String 🏏</span><span style={{fontWeight:'bold',color:'#fff'}}>{activeBatter?activeBatter.name:'Striker'} *</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span>🏏</span><span style={{fontWeight:'bold',color:'#fff'}}>{activeBatter?activeBatter.name:'Striker'} *</span></div>
                 <div style={{display:'flex',gap:'15px',color:'#aaa',fontSize:'14px'}}><span><strong style={{color:'#fff'}}>{strikerRuns}</strong> ({strikerBallsFaced})</span><span>SR: {strikerSR}</span></div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span>Bowl ⚾</span><span style={{fontWeight:'bold',color:'#fff'}}>{activeBowler?activeBowler.name:'Bowler'}</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span>⚾</span><span style={{fontWeight:'bold',color:'#fff'}}>{activeBowler?activeBowler.name:'Bowler'}</span></div>
                 <div style={{display:'flex',gap:'15px',color:'#aaa',fontSize:'14px'}}><span><strong style={{color:'#fff'}}>{bowlerWickets}</strong>-{bowlerRunsConceded}</span><span>Ov: {Math.floor(bowlerLegalBalls/6)}.{bowlerLegalBalls%6}</span><span>ECO: {bowlerEcon}</span></div>
               </div>
             </div>
