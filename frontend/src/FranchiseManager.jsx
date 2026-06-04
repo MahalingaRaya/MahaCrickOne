@@ -135,3 +135,4 @@ export default function FranchiseManager({ teams, players, matches, onSync }) {
     </div>
   );
 }
+
