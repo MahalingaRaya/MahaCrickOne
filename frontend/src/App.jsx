@@ -20,26 +20,20 @@ export default function App() {
   useEffect(() => { syncData(); }, []);
   useEffect(() => { if (mId) fetchEvents(); }, [mId]);
 
-  // THE FIX: If backend fails and sends an object, force it to be an empty array []
+  // SAFE FETCHING: Guarantees arrays are loaded
   const syncData = () => {
-    fetch('https://mahacrickone.onrender.com/api/teams').then(r=>r.json())
-      .then(d => setTeams(Array.isArray(d) ? d : [])).catch(()=>{});
-      
-    fetch('https://mahacrickone.onrender.com/api/players').then(r=>r.json())
-      .then(d => setPlayers(Array.isArray(d) ? d : [])).catch(()=>{});
-      
-    fetch('https://mahacrickone.onrender.com/api/matches').then(r=>r.json())
-      .then(d => { 
-        const safeD = Array.isArray(d) ? d : [];
-        setMatches(safeD); 
-        if(safeD.length > 0 && !mId) setMId(safeD[safeD.length - 1].id.toString()); 
-      }).catch(()=>{});
+    fetch('https://mahacrickone.onrender.com/api/teams').then(r=>r.json()).then(d=>setTeams(Array.isArray(d)?d:[])).catch(()=>{});
+    fetch('https://mahacrickone.onrender.com/api/players').then(r=>r.json()).then(d=>setPlayers(Array.isArray(d)?d:[])).catch(()=>{});
+    fetch('https://mahacrickone.onrender.com/api/matches').then(r=>r.json()).then(d => { 
+      const safeD = Array.isArray(d) ? d : [];
+      setMatches(safeD); 
+      if(safeD.length > 0 && !mId) setMId(safeD[safeD.length - 1].id.toString()); 
+    }).catch(()=>{});
   };
 
   const fetchEvents = () => {
     if (!mId) return;
-    fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r=>r.json())
-      .then(d => setEvents(Array.isArray(d) ? d : [])).catch(()=>{});
+    fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r=>r.json()).then(d=>setEvents(Array.isArray(d)?d:[])).catch(()=>{});
   };
 
   const currentMatch = Array.isArray(matches) ? matches.find(m => m.id.toString() === mId.toString()) : null;
@@ -84,7 +78,6 @@ export default function App() {
 
   const battingTeamId = currentMatch ? (inn === 1 ? currentMatch.team1?.id : currentMatch.team2?.id) : null;
   const bowlingTeamId = currentMatch ? (inn === 1 ? currentMatch.team2?.id : currentMatch.team1?.id) : null;
-  
   const safePlayers = Array.isArray(players) ? players : [];
   const battingTeamPlayers = safePlayers.filter(p => p.team?.id === battingTeamId);
   const bowlingTeamPlayers = safePlayers.filter(p => p.team?.id === bowlingTeamId);
