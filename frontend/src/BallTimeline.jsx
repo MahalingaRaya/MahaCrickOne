@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function BallTimeline({ events = [], currentOver }) {
   const overEvs = events.filter(e => e.overNumber === currentOver);
-
+  
   return (
     <div style={{ background: '#111', padding: '12px', borderRadius: '8px', border: '1px solid #222', marginTop: '15px' }}>
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', overflowX: 'auto', marginBottom: '8px' }}>
@@ -12,7 +12,7 @@ export default function BallTimeline({ events = [], currentOver }) {
           if (e.isWicket || e.wicket) { lbl = 'W'; bg = '#d32f2f'; }
           else if (e.extraType === 'WIDE' || e.extraType === 'NO_BALL') { lbl = e.extraType==='WIDE'?'WD':'NB'; bg = '#b8860b'; }
           else if (e.runsScored===4 || e.runsScored===6) bg = '#1b5e20';
-          return <div key={e.id} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '26px', height: '26px', borderRadius: '50%', background: bg, fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>{lbl}</div>;
+          return <div key={e.id} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '26px', height: '26px', borderRadius: '50%', background: bg, fontSize: '11px', fontWeight: 'bold', flexShrink: 0, color: '#fff' }}>{lbl}</div>;
         })}
       </div>
       <div style={{ maxHeight: '80px', overflowY: 'auto', borderTop: '1px solid #222', paddingTop: '6px' }}>
