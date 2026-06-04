@@ -20,30 +20,39 @@ export default function App() {
   useEffect(() => { syncData(); }, []);
   useEffect(() => { if (mId) fetchEvents(); }, [mId]);
 
+  // THE FIX: If backend fails and sends an object, force it to be an empty array []
   const syncData = () => {
-    fetch('https://mahacrickone.onrender.com/api/teams').then(r=>r.json()).then(setTeams).catch(()=>{});
-    fetch('https://mahacrickone.onrender.com/api/players').then(r=>r.json()).then(setPlayers).catch(()=>{});
-    fetch('https://mahacrickone.onrender.com/api/matches').then(r=>r.json()).then(d => { 
-      setMatches(d); if(d && d.length > 0 && !mId) setMId(d[d.length - 1].id.toString()); 
-    }).catch(()=>{});
+    fetch('https://mahacrickone.onrender.com/api/teams').then(r=>r.json())
+      .then(d => setTeams(Array.isArray(d) ? d : [])).catch(()=>{});
+      
+    fetch('https://mahacrickone.onrender.com/api/players').then(r=>r.json())
+      .then(d => setPlayers(Array.isArray(d) ? d : [])).catch(()=>{});
+      
+    fetch('https://mahacrickone.onrender.com/api/matches').then(r=>r.json())
+      .then(d => { 
+        const safeD = Array.isArray(d) ? d : [];
+        setMatches(safeD); 
+        if(safeD.length > 0 && !mId) setMId(safeD[safeD.length - 1].id.toString()); 
+      }).catch(()=>{});
   };
 
   const fetchEvents = () => {
     if (!mId) return;
-    fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r=>r.json()).then(setEvents).catch(()=>{});
+    fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r=>r.json())
+      .then(d => setEvents(Array.isArray(d) ? d : [])).catch(()=>{});
   };
 
-  const currentMatch = matches.find(m => m.id.toString() === mId.toString()) || null;
+  const currentMatch = Array.isArray(matches) ? matches.find(m => m.id.toString() === mId.toString()) : null;
   const totalLimitOvers = currentMatch ? parseInt(currentMatch.totalOvers || 1) : 1;
 
-  const innEvents = events.filter(e => inn === 1 ? e.inningsNumber === 1 : e.inningsNumber === 2);
-  const totalRuns = innEvents.reduce((s, e) => s + e.runsScored + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0);
+  const innEvents = Array.isArray(events) ? events.filter(e => inn === 1 ? e.inningsNumber === 1 : e.inningsNumber === 2) : [];
+  const totalRuns = innEvents.reduce((s, e) => s + (e.runsScored || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0);
   const totalWickets = innEvents.filter(e => e.isWicket).length;
   const legalBalls = innEvents.filter(e => e.extraType !== 'WIDE' && e.extraType !== 'NO_BALL').length;
   const currentOver = Math.floor(legalBalls / 6);
   const currentBall = legalBalls % 6;
 
-  const firstInningsRuns = events.filter(e => e.inningsNumber === 1).reduce((s, e) => s + e.runsScored + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0);
+  const firstInningsRuns = Array.isArray(events) ? events.filter(e => e.inningsNumber === 1).reduce((s, e) => s + (e.runsScored || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0) : 0;
   const targetRuns = inn === 2 ? firstInningsRuns + 1 : 0;
   const runsNeeded = inn === 2 ? Math.max(0, targetRuns - totalRuns) : 0;
   const ballsRemaining = inn === 2 ? Math.max(0, (totalLimitOvers * 6) - legalBalls) : 0;
@@ -75,8 +84,10 @@ export default function App() {
 
   const battingTeamId = currentMatch ? (inn === 1 ? currentMatch.team1?.id : currentMatch.team2?.id) : null;
   const bowlingTeamId = currentMatch ? (inn === 1 ? currentMatch.team2?.id : currentMatch.team1?.id) : null;
-  const battingTeamPlayers = players.filter(p => p.team?.id === battingTeamId);
-  const bowlingTeamPlayers = players.filter(p => p.team?.id === bowlingTeamId);
+  
+  const safePlayers = Array.isArray(players) ? players : [];
+  const battingTeamPlayers = safePlayers.filter(p => p.team?.id === battingTeamId);
+  const bowlingTeamPlayers = safePlayers.filter(p => p.team?.id === bowlingTeamId);
 
   const btn = { flex: 1, padding: '12px 0', backgroundColor: '#252525', color: '#ccc', border: 'none', borderRadius: '5px', fontWeight: 'bold' };
 
@@ -117,7 +128,7 @@ export default function App() {
                     <option value="">Bowler</option>{bowlingTeamPlayers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
-                <ScorecardTables players={players} events={innEvents} battingTeamId={battingTeamId} bowlingTeamId={bowlingTeamId} strikerId={strikerId} />
+                <ScorecardTables players={safePlayers} events={innEvents} battingTeamId={battingTeamId} bowlingTeamId={bowlingTeamId} strikerId={strikerId} />
                 <BallTimeline events={innEvents} currentOver={currentOver} />
                 <div style={{ background: '#111', padding: '15px', borderRadius: '12px', border: '1px solid #222', marginTop: '15px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
