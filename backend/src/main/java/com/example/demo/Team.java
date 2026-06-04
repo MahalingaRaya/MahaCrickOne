@@ -1,22 +1,19 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
+import java.util.List;
 
 @Entity
-@Table(name = "teams", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"name"}),
-    @UniqueConstraint(columnNames = {"shortName"})
-})
+@Table(name = "teams")
 public class Team {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
 
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, unique = true, length = 10)
     private String shortName;
 
     public Long getId() { return id; }
