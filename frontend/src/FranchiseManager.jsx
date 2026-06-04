@@ -1,14 +1,14 @@
 import { useState } from 'react';
 
-export default function FranchiseManager({ teams = [], players = [], matches = [], onSync }) {
+export default function FranchiseManager({ teams, players, matches, onSync }) {
   const safeTeams = Array.isArray(teams) ? teams : [];
 
   const [tn, setTn] = useState(''); const [sn, setSn] = useState('');
   const [pn, setPn] = useState(''); const [pRole, setPRole] = useState('BATSMAN'); const [tid, setTid] = useState('');
-  const [t1, setT1] = useState(''); const [t2, setT2] = useState(''); const [ovs, setOvs] = useState('1'); const [fmt, setFmt] = useState('T1');
+  const [t1, setT1] = useState(''); const [t2, setT2] = useState(''); const [ovs, setOvs] = useState('1'); 
 
   const box = { background: '#111', padding: '15px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #333' };
-  const inp = { width: '100%', padding: '10px', boxSizing: 'border-box', background: '#222', color: '#fff', border: 'none', borderRadius: '4px', marginBottom: '10px' };
+  const inp = { width: '100%', padding: '8px', boxSizing: 'border-box', background: '#222', color: '#fff', border: 'none', borderRadius: '4px', marginBottom: '8px' };
 
   const handleTeam = async (e) => {
     e.preventDefault();
@@ -19,20 +19,18 @@ export default function FranchiseManager({ teams = [], players = [], matches = [
   const handlePlayer = async (e) => {
     e.preventDefault();
     await fetch('https://mahacrickone.onrender.com/api/players', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: pn, role: pRole, team: { id: parseInt(tid) } }) });
-    setPn(''); onSync(); alert("Player Drafted!");
+    setPn(''); onSync(); alert("Draft Confirmed!");
   };
 
   const handleMatch = async (e) => {
     e.preventDefault();
     if(t1 === t2) return alert("Select distinct squads!");
-    
-    // THE FIX: Sending properly formatted Team Objects to satisfy Java Spring Boot @ManyToOne
+
+    // THE FIX: Sending the exact JSON format your ORIGINAL Java backend expects
     const payload = {
-      team1: { id: parseInt(t1) },
-      team2: { id: parseInt(t2) },
-      totalOvers: parseInt(ovs),
-      matchFormat: fmt,
-      status: 'LIVE'
+      team1Id: t1.toString(),
+      team2Id: t2.toString(),
+      totalOvers: ovs.toString()
     };
 
     const res = await fetch('https://mahacrickone.onrender.com/api/matches', { 
@@ -56,7 +54,7 @@ export default function FranchiseManager({ teams = [], players = [], matches = [
         <form onSubmit={handleTeam}>
           <input type="text" placeholder="Franchise Name" value={tn} onChange={e=>setTn(e.target.value)} required style={inp} />
           <input type="text" placeholder="Short Name" value={sn} onChange={e=>setSn(e.target.value)} required style={inp} />
-          <button type="submit" style={{ width: '100%', padding: '10px', background: '#fff', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Save</button>
+          <button type="submit" style={{ width: '100%', padding: '8px', background: '#fff', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Save</button>
         </form>
       </div>
       <div style={box}>
@@ -70,7 +68,7 @@ export default function FranchiseManager({ teams = [], players = [], matches = [
             <option value="">Select Franchise Assignment</option>
             {safeTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
-          <button type="submit" style={{ width: '100%', padding: '10px', background: '#fff', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Draft</button>
+          <button type="submit" style={{ width: '100%', padding: '8px', background: '#fff', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Draft</button>
         </form>
       </div>
       <div style={box}>
@@ -82,10 +80,10 @@ export default function FranchiseManager({ teams = [], players = [], matches = [
           <select value={t2} onChange={e=>setT2(e.target.value)} required style={inp}>
             <option value="">Team B</option>{safeTeams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}
           </select>
-          <select value={fmt} onChange={e=>{ setFmt(e.target.value); setOvs(e.target.value==='T1'?'1':e.target.value==='T5'?'5':'20'); }} style={inp}>
-            <option value="T1">1 Over Match</option><option value="T5">5 Overs Match</option><option value="T20">20 Overs Match</option>
+          <select value={ovs} onChange={e=>setOvs(e.target.value)} style={inp}>
+            <option value="1">1 Over Match</option><option value="5">5 Overs Match</option><option value="20">20 Overs Match</option>
           </select>
-          <button type="submit" style={{ width: '100%', padding: '12px', background: '#e3b505', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Launch Match</button>
+          <button type="submit" style={{ width: '100%', padding: '10px', background: '#e3b505', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Launch Match</button>
         </form>
       </div>
     </div>
