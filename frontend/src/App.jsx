@@ -35,23 +35,25 @@ export default function App() {
     fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r=>r.json()).then(d=>setEvents(Array.isArray(d)?d:[])).catch(()=>{});
   };
 
-  // Safe mappings for original backend structure
   const currentMatch = Array.isArray(matches) ? matches.find(m => m.id.toString() === mId.toString()) : null;
   const totalLimitOvers = currentMatch ? parseInt(currentMatch.totalOvers || 1) : 1;
 
-  const team1Obj = teams.find(t => t.id.toString() === currentMatch?.team1Id?.toString());
-  const team2Obj = teams.find(t => t.id.toString() === currentMatch?.team2Id?.toString());
+  // Structural mapping engine layer to find correct entities from flat array values
+  const team1IdRaw = currentMatch?.team1?.id || currentMatch?.team1Id;
+  const team2IdRaw = currentMatch?.team2?.id || currentMatch?.team2Id;
 
-  const battingTeamId = currentMatch ? (inn === 1 ? team1Obj?.id : team2Obj?.id) : null;
-  const bowlingTeamId = currentMatch ? (inn === 1 ? team2Obj?.id : team1Obj?.id) : null;
+  const team1Obj = teams.find(t => t.id.toString() === team1IdRaw?.toString());
+  const team2Obj = teams.find(t => t.id.toString() === team2IdRaw?.toString());
 
-  // Translate old event data (runs, wicket, batterId) to the new pro variables
-  const rawInnEvents = Array.isArray(events) ? events.filter(e => inn === 1 ? e.overNumber < 50 : e.overNumber >= 50) : [];
+  const battingTeamId = inn === 1 ? team1Obj?.id : team2Obj?.id;
+  const bowlingTeamId = inn === 1 ? team2Obj?.id : team1Obj?.id;
+
+  const rawInnEvents = Array.isArray(events) ? events.filter(e => inn === 1 ? (e.overNumber < 50) : (e.overNumber >= 50)) : [];
   const innEvents = rawInnEvents.map(e => ({
     ...e,
-    runsScored: e.runs,
-    isWicket: e.wicket,
-    strikerId: e.batterId,
+    runsScored: e.runs !== undefined ? e.runs : e.runsScored,
+    isWicket: e.wicket !== undefined ? e.wicket : e.isWicket,
+    strikerId: e.batterId !== undefined ? e.batterId : e.strikerId,
     overNumber: e.overNumber >= 50 ? e.overNumber - 50 : e.overNumber
   }));
 
@@ -61,7 +63,7 @@ export default function App() {
   const currentOver = Math.floor(legalBalls / 6);
   const currentBall = legalBalls % 6;
 
-  const firstInningsRuns = Array.isArray(events) ? events.filter(e => e.overNumber < 50).reduce((s, e) => s + (e.runs || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0) : 0;
+  const firstInningsRuns = Array.isArray(events) ? events.filter(e => (e.overNumber < 50)).reduce((s, e) => s + (e.runs || e.runsScored || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0) : 0;
   const targetRuns = inn === 2 ? firstInningsRuns + 1 : 0;
   const runsNeeded = inn === 2 ? Math.max(0, targetRuns - totalRuns) : 0;
   const ballsRemaining = inn === 2 ? Math.max(0, (totalLimitOvers * 6) - legalBalls) : 0;
@@ -79,18 +81,20 @@ export default function App() {
       alert(`Over complete! Please change bowler.`);
     }
 
-    // THE FIX: Sending the original event variables (batterId, runs, wicket) to DB
     await fetch('https://mahacrickone.onrender.com/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         matchId: parseInt(mId), 
         batterId: parseInt(strikerId), 
+        strikerId: parseInt(strikerId),
         bowlerId: parseInt(bowlerId),
         overNumber: inn === 1 ? currentOver : currentOver + 50, 
         ballNumber: currentBall + 1,
-        runs: runs, 
-        wicket: isWkt, 
+        runs: runs,
+        runsScored: runs, 
+        wicket: isWkt,
+        isWicket: isWkt, 
         extraType: extra
       })
     });
@@ -98,8 +102,8 @@ export default function App() {
   };
 
   const safePlayers = Array.isArray(players) ? players : [];
-  const battingTeamPlayers = safePlayers.filter(p => p.team?.id === battingTeamId);
-  const bowlingTeamPlayers = safePlayers.filter(p => p.team?.id === bowlingTeamId);
+  const battingTeamPlayers = safePlayers.filter(p => p.team?.id === battingTeamId || p.teamId === battingTeamId);
+  const bowlingTeamPlayers = safePlayers.filter(p => p.team?.id === bowlingTeamId || p.teamId === bowlingTeamId);
 
   const btn = { flex: 1, padding: '12px 0', backgroundColor: '#252525', color: '#ccc', border: 'none', borderRadius: '5px', fontWeight: 'bold' };
 
@@ -127,8 +131,10 @@ export default function App() {
                   <select value={mId} onChange={e => { setMId(e.target.value); setStrikerId(''); setNonStrikerId(''); setBowlerId(''); }} style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
                     <option value="" disabled>Select a match</option>
                     {matches.map(m => {
-                      const t1N = teams.find(t=>t.id.toString()===m.team1Id?.toString())?.shortName;
-                      const t2N = teams.find(t=>t.id.toString()===m.team2Id?.toString())?.shortName;
+                      const t1Id = m.team1?.id || m.team1Id;
+                      const t2Id = m.team2?.id || m.team2Id;
+                      const t1N = teams.find(t=>t.id.toString()===t1Id?.toString())?.shortName || 'T1';
+                      const t2N = teams.find(t=>t.id.toString()===t2Id?.toString())?.shortName || 'T2';
                       return <option key={m.id} value={m.id}>{t1N} vs {t2N} ({m.totalOvers} OV)</option>
                     })}
                   </select>
