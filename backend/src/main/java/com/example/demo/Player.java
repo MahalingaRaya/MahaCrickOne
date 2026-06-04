@@ -3,21 +3,24 @@ package com.example.demo.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "players")
+@Table(name = "players", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"name", "team_id"})
+})
 public class Player {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
-    private String role; // Batsman, Bowler, All-Rounder
+
+    private String role;
 
     @ManyToOne
     @JoinColumn(name = "team_id")
     private Team team;
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
