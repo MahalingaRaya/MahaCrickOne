@@ -43,7 +43,7 @@ function App() {
   // --- SCORECARD CALCULATIONS ---
   const totalRuns = events.reduce((sum, ev) => {
       let r = ev.runs;
-      if (ev.extraType === 'WIDE' || ev.extraType === 'NO_BALL') r += 1; // Assuming 1 extra run penalty
+      if (ev.extraType === 'WIDE' || ev.extraType === 'NO_BALL') r += 1; 
       return sum + r;
   }, 0);
   const totalWickets = events.filter(ev => ev.wicket).length
@@ -52,18 +52,16 @@ function App() {
   const calcBalls = legalBalls % 6
 
   // --- JIO/ESPN PLAYER STAT CALCULATIONS ---
-  // 1. Striker Stats
   const strikerEvents = events.filter(e => e.batterId === parseInt(batterId));
   const strikerRuns = strikerEvents.reduce((sum, e) => (e.extraType === 'WIDE' || e.extraType === 'LEG_BYE' || e.extraType === 'BYE') ? sum : sum + e.runs, 0);
   const strikerBallsFaced = strikerEvents.filter(e => e.extraType !== 'WIDE').length;
   const strikerSR = strikerBallsFaced > 0 ? ((strikerRuns / strikerBallsFaced) * 100).toFixed(1) : "0.0";
 
-  // 2. Bowler Stats
   const bowlerEvents = events.filter(e => e.bowlerId === parseInt(bowlerId));
   const bowlerRunsConceded = bowlerEvents.reduce((sum, e) => {
       let cost = e.runs;
       if (e.extraType === 'WIDE' || e.extraType === 'NO_BALL') cost += 1;
-      if (e.extraType === 'BYE' || e.extraType === 'LEG_BYE') cost = 0; // Doesn't count against bowler
+      if (e.extraType === 'BYE' || e.extraType === 'LEG_BYE') cost = 0; 
       return sum + cost;
   }, 0);
   const bowlerWickets = bowlerEvents.filter(e => e.wicket).length;
@@ -72,6 +70,10 @@ function App() {
 
   const activeBatter = players.find(p => p.id.toString() === batterId)
   const activeBowler = players.find(p => p.id.toString() === bowlerId)
+
+  // --- THIS OVER TICKER LOGIC ---
+  const currentOverTracker = calcBalls === 0 && legalBalls > 0 ? calcOvers - 1 : calcOvers;
+  const thisOverEvents = events.filter(e => e.overNumber === currentOverTracker);
 
   // --- ACTIONS ---
   const handleScoreBall = async (runs, isWicket = false, extraType = null) => {
@@ -94,11 +96,9 @@ function App() {
       } catch (error) { alert("Network Error: " + error.message) }
   }
 
-  // NEW: UNDO ACTION
   const handleUndo = async () => {
       if (events.length === 0) return alert("Nothing to undo!");
-      const lastEvent = events[events.length - 1]; // Because we ordered by Asc in backend!
-      
+      const lastEvent = events[events.length - 1]; 
       try {
           const res = await fetch(`https://mahacrickone.onrender.com/api/events/${lastEvent.id}`, { method: 'DELETE' });
           if (res.ok) {
@@ -127,9 +127,7 @@ function App() {
 
         {activePage === 'match' && (
           <div>
-            {/* BROADCAST SCOREBOARD */}
             <div style={{ background: '#111', borderRadius: '10px', border: '1px solid #333', overflow: 'hidden', marginBottom: '20px' }}>
-                {/* Top Bar: Team Names & Score */}
                 <div style={{ padding: '20px', textAlign: 'center', position: 'relative', background: 'linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)' }}>
                     <div style={{ position: 'absolute', top: '10px', right: '15px', color: '#d32f2f', fontWeight: 'bold', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <div style={{ width: '8px', height: '8px', backgroundColor: '#d32f2f', borderRadius: '50%', animation: 'blink 1.5s infinite' }}></div> LIVE
@@ -145,9 +143,7 @@ function App() {
                     </div>
                 </div>
 
-                {/* Bottom Bar: JIO/ESPN Player Stats */}
                 <div style={{ background: '#1a1a1a', padding: '15px', borderTop: '1px solid #333' }}>
-                    {/* Batter Row */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid #2a2a2a' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '16px' }}>🏏</span>
@@ -159,7 +155,6 @@ function App() {
                         </div>
                     </div>
                     
-                    {/* Bowler Row */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '16px' }}>⚾</span>
@@ -172,9 +167,34 @@ function App() {
                         </div>
                     </div>
                 </div>
+
+                {/* NEW: THIS OVER TICKER */}
+                <div style={{ background: '#111', padding: '12px 15px', borderTop: '1px solid #333', display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto' }}>
+                    <span style={{ color: '#888', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>THIS OVER:</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {thisOverEvents.map(e => {
+                            let display = e.runs;
+                            let bgColor = '#333';
+                            let textColor = '#fff';
+
+                            if (e.wicket) { display = 'W'; bgColor = '#d32f2f'; } 
+                            else if (e.extraType === 'WIDE') { display = 'WD'; bgColor = '#555'; } 
+                            else if (e.extraType === 'NO_BALL') { display = 'NB'; bgColor = '#555'; } 
+                            else if (e.extraType === 'LEG_BYE') { display = `${e.runs}Lb`; bgColor = '#444'; }
+                            else if (e.extraType === 'BYE') { display = `${e.runs}B`; bgColor = '#444'; }
+                            else if (e.runs === 4) { bgColor = '#28a745'; } 
+                            else if (e.runs === 6) { bgColor = '#28a745'; textColor = '#000'; }
+
+                            return (
+                                <div key={e.id} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '32px', height: '32px', borderRadius: '50%', background: bgColor, color: textColor, fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>
+                                    {display}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
             </div>
 
-            {/* SCORING PAD */}
             <div style={{ background: '#111', padding: '15px', borderRadius: '10px', border: '1px solid #222' }}>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                   <select value={activeMatchId} onChange={e => setActiveMatchId(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '5px', background: '#222', color: '#fff', border: '1px solid #444' }}>
@@ -215,7 +235,6 @@ function App() {
           </div>
         )}
 
-        {/* --- ADMIN DASHBOARD VIEW (Collapsed for brevity but kept functional) --- */}
         {activePage === 'admin' && (
           <div>
             <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}><h3 style={{ margin: '0 0 15px 0' }}>1. Teams</h3><form onSubmit={handleAddTeam} style={{ display: 'flex', gap: '10px' }}><input type="text" placeholder="Team Name" value={teamName} onChange={e => setTeamName(e.target.value)} required style={{ flex: 2, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} /><input type="text" placeholder="Short" value={shortName} onChange={e => setShortName(e.target.value)} required style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} /><button type="submit" style={{ padding: '0 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Add</button></form></div>
@@ -226,7 +245,4 @@ function App() {
       </div>
       <style>{`@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }`}</style>
     </div>
-  )
-}
-
-export default App
+  
