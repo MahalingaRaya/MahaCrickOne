@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import FranchiseManager from './components/FranchiseManager';
-import ScorecardTables from './components/ScorecardTables';
-import BallTimeline from './components/BallTimeline';
+import FranchiseManager from './FranchiseManager';
+import ScorecardTables from './ScorecardTables';
+import BallTimeline from './BallTimeline';
 
 export default function App() {
   const [view, setView] = useState('match');
@@ -38,7 +38,12 @@ export default function App() {
   const currentOver = Math.floor(legalBalls / 6);
   const currentBall = legalBalls % 6;
 
-  const targetRuns = inn === 2 ? (events.filter(e => e.inningsNumber === 1).reduce((s, e) => s + e.runsScored + (e.extraType==='WIDE'||e.extraType==='NO_BALL'?1:0), 0) + 1) : 0;
+  const firstInningsRuns = events.filter(e => e.inningsNumber === 1).reduce((s, e) => s + e.runsScored + (e.extraType==='WIDE'||e.extraType==='NO_BALL'?1:0), 0);
+  const targetRuns = inn === 2 ? firstInningsRuns + 1 : 0;
+  
+  // Guard calculation logic against negative run balance overflows
+  const runsNeeded = inn === 2 ? Math.max(0, targetRuns - totalRuns) : 0;
+  const ballsRemaining = inn === 2 ? Math.max(0, (totalLimitOvers * 6) - legalBalls) : 0;
 
   // Automatic Strike Rotation logic
   const handleScoreInput = async (runs, isWkt = false, extra = 'NONE') => {
@@ -89,7 +94,7 @@ export default function App() {
   return (
     <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' }}>
       <header style={{ backgroundColor: '#111', padding: '15px', textAlign: 'center', borderBottom: '2px solid #e3b505' }}>
-        <h1 style={{ margin: 0, color: '#e3b505', fontSize: '22px' }}>🏏 MAHA CRICKONE PRO</h1>
+        <h1 style={{ margin: 0, color: '#e3b505', fontSize: '22px' }}> Smart Scorer PRO</h1>
       </header>
 
       <div style={{ display: 'flex', justifyContent: 'center', margin: '15px 0', gap: '10px' }}>
@@ -105,7 +110,7 @@ export default function App() {
               <h2 style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#aaa' }}>{currentMatch?.team1?.shortName} VS {currentMatch?.team2?.shortName} ({currentMatch?.matchFormat})</h2>
               <div style={{ fontSize: '54px', fontWeight: '900', margin: '10px 0' }}>{totalRuns}/{totalWickets}</div>
               <div style={{ fontSize: '16px', color: '#e3b505', fontWeight: 'bold' }}>OVERS: {currentOver}.{currentBall} / {totalLimitOvers}.0</div>
-              {inn === 2 && <div style={{ color: '#fff', background: '#b8860b', padding: '6px', borderRadius: '5px', marginTop: '10px', fontSize: '13px' }}>Need {targetRuns - totalRuns} runs in {(totalLimitOvers*6) - legalBalls} balls</div>}
+              {inn === 2 && <div style={{ color: '#fff', background: '#b8860b', padding: '6px', borderRadius: '5px', marginTop: '10px', fontSize: '13px' }}>Need {runsNeeded} runs in {ballsRemaining} balls</div>}
             </div>
 
             {/* Live Player Context Assignment Dropdowns */}
@@ -161,4 +166,3 @@ export default function App() {
     </div>
   );
 }
-
