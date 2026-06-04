@@ -6,19 +6,16 @@ function App() {
   const [players, setPlayers] = useState([])
   const [matches, setMatches] = useState([])
 
-  // Form States
   const [teamName, setTeamName] = useState('')
   const [shortName, setShortName] = useState('')
   const [playerName, setPlayerName] = useState('')
   const [playerRole, setPlayerRole] = useState('Batsman')
   const [selectedTeamId, setSelectedTeamId] = useState('')
   
-  // Match States
   const [team1Id, setTeam1Id] = useState('')
   const [team2Id, setTeam2Id] = useState('')
   const [totalOvers, setTotalOvers] = useState(20)
 
-  // Fetch Data on Load
   useEffect(() => {
     fetchTeams()
     fetchPlayers()
@@ -50,7 +47,6 @@ function App() {
       .then(data => setMatches(data)).catch(err => console.error(err))
   }
 
-  // Handlers
   const handleAddTeam = async (e) => {
     e.preventDefault()
     try {
@@ -88,11 +84,11 @@ function App() {
     }
     
     try {
-      // Force IDs to be Integers for Java
+      // Flattened Payload: Sending basic Strings to bypass Java mapping errors
       const payload = { 
-          team1: { id: parseInt(team1Id) }, 
-          team2: { id: parseInt(team2Id) }, 
-          totalOvers: parseInt(totalOvers) 
+          team1Id: team1Id.toString(), 
+          team2Id: team2Id.toString(), 
+          totalOvers: totalOvers.toString() 
       }
       
       const res = await fetch('https://mahacrickone.onrender.com/api/matches', {
@@ -105,9 +101,9 @@ function App() {
           fetchMatches(); 
           alert("Match Scheduled Successfully! ✅")
       } else {
-          // If the backend fails, this will tell us exactly why
+          // This will now capture our custom Java error messages
           const errText = await res.text();
-          alert(`Backend Error (${res.status}): ` + errText)
+          alert(`Backend Error (${res.status}):\n${errText}`)
       }
     } catch (error) { 
         alert("Network Error: " + error.message) 
@@ -118,7 +114,6 @@ function App() {
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
       <h1 style={{ textAlign: 'center' }}>Maha CrickOne Manager</h1>
 
-      {/* 1. Create Team */}
       <div style={{ background: '#1e1e1e', color: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
         <h2>Register Franchise</h2>
         <form onSubmit={handleAddTeam}>
@@ -128,7 +123,6 @@ function App() {
         </form>
       </div>
 
-      {/* 2. Draft Player */}
       <div style={{ background: '#1e1e1e', color: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
         <h2>Draft Player</h2>
         <form onSubmit={handleAddPlayer}>
@@ -146,7 +140,6 @@ function App() {
         </form>
       </div>
 
-      {/* 3. Schedule Match */}
       <div style={{ background: '#1e1e1e', color: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
         <h2>Schedule Match</h2>
         <form onSubmit={handleAddMatch}>
@@ -171,7 +164,6 @@ function App() {
         </form>
       </div>
 
-      {/* 4. Upcoming Fixtures */}
       <div>
         <h2>Upcoming Fixtures</h2>
         {matches.length === 0 ? <p>No matches scheduled yet!</p> : (
