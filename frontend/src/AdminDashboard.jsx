@@ -7,20 +7,20 @@ export default function AdminDashboard({ teams, players, matches, onAddTeam, onA
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [team1Id, setTeam1Id] = useState('');
   const [team2Id, setTeam2Id] = useState('');
-  const [matchOvers, setMatchOvers] = useState('20');
+  const [matchOvers, setMatchOvers] = useState('1'); // Defaulted to 1 over configuration!
 
   const cardStyle = { background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #333' };
   const inputStyle = { padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff', boxSizing: 'border-box' };
-  const btnStyle = { padding: '12px 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' };
+  const btnStyle = { padding: '12px 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' };
 
   return (
     <div>
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 15px 0', color: '#e3b505' }}>1. Register Franchise Team</h3>
         <form onSubmit={(e) => { e.preventDefault(); onAddTeam(teamName, shortName); setTeamName(''); setShortName(''); }} style={{ display: 'flex', gap: '10px' }}>
-          <input type="text" placeholder="Team Name (e.g. Royal Challengers)" value={teamName} onChange={e => setTeamName(e.target.value)} required style={{ ...inputStyle, flex: 2 }} />
-          <input type="text" placeholder="Short (RCB)" value={shortName} onChange={e => setShortName(e.target.value)} required style={{ ...inputStyle, flex: 1 }} />
-          <button type="submit" style={btnStyle}>Add</button>
+          <input type="text" placeholder="Team Name" value={teamName} onChange={e => setTeamName(e.target.value)} required style={{ ...inputStyle, flex: 2 }} />
+          <input type="text" placeholder="Short Name" value={shortName} onChange={e => setShortName(e.target.value)} required style={{ ...inputStyle, flex: 1 }} />
+          <button type="submit" style={btnStyle}>Save</button>
         </form>
       </div>
 
@@ -54,11 +54,13 @@ export default function AdminDashboard({ teams, players, matches, onAddTeam, onA
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <select value={matchOvers} onChange={e => setMatchOvers(e.target.value)} style={{ ...inputStyle, flex: 1 }}>
+              <option value="1">Custom 1-Over Match</option>
+              <option value="2">Custom 2-Over Match</option>
               <option value="5">T5 Match (5 Overs)</option>
               <option value="10">T10 Match (10 Overs)</option>
               <option value="20">T20 Match (20 Overs)</option>
             </select>
-            <button type="submit" style={{ ...btnStyle, width: '100%' }}>Create Official Fixture</button>
+            <button type="submit" style={{ ...btnStyle, width: '100%', background: '#e3b505' }}>Create Match</button>
           </div>
         </form>
       </div>
