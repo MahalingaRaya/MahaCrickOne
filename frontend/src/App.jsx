@@ -21,14 +21,17 @@ function App() {
   const [bowlerId, setBowlerId] = useState('')
 
   useEffect(() => {
-    fetchTeams(); fetchPlayers(); fetchMatches();
+    fetchTeams(); 
+    fetchPlayers(); 
+    fetchMatches();
   }, [])
 
   useEffect(() => {
     if (activeMatchId) {
       fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`)
         .then(res => res.json())
-        .then(data => setEvents(data)).catch(console.error)
+        .then(data => setEvents(data))
+        .catch(console.error)
     }
   }, [activeMatchId])
 
@@ -168,7 +171,7 @@ function App() {
                     </div>
                 </div>
 
-                {/* NEW: THIS OVER TICKER */}
+                {/* THIS OVER TICKER */}
                 <div style={{ background: '#111', padding: '12px 15px', borderTop: '1px solid #333', display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto' }}>
                     <span style={{ color: '#888', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>THIS OVER:</span>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -237,12 +240,34 @@ function App() {
 
         {activePage === 'admin' && (
           <div>
-            <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}><h3 style={{ margin: '0 0 15px 0' }}>1. Teams</h3><form onSubmit={handleAddTeam} style={{ display: 'flex', gap: '10px' }}><input type="text" placeholder="Team Name" value={teamName} onChange={e => setTeamName(e.target.value)} required style={{ flex: 2, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} /><input type="text" placeholder="Short" value={shortName} onChange={e => setShortName(e.target.value)} required style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} /><button type="submit" style={{ padding: '0 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Add</button></form></div>
-            <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}><h3 style={{ margin: '0 0 15px 0' }}>2. Players</h3><form onSubmit={handleAddPlayer}><input type="text" placeholder="Player Name" value={playerName} onChange={e => setPlayerName(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: '12px', marginBottom: '10px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} /><div style={{ display: 'flex', gap: '10px' }}><select value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)} required style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }}><option value="" disabled>Select Team</option>{teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}</select><button type="submit" style={{ padding: '0 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Draft</button></div></form></div>
-            <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}><h3 style={{ margin: '0 0 15px 0' }}>3. Matches</h3><form onSubmit={handleAddMatch} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><select value={team1Id} onChange={e => setTeam1Id(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }}>{teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}</select><span style={{ fontWeight: 'bold', color: '#777' }}>VS</span><select value={team2Id} onChange={e => setTeam2Id(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }}>{teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}</select><button type="submit" style={{ padding: '12px 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Create</button></form></div>
-          </div>
-        )}
-      </div>
-      <style>{`@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }`}</style>
-    </div>
-  
+            <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 15px 0' }}>1. Teams</h3>
+              <form onSubmit={handleAddTeam} style={{ display: 'flex', gap: '10px' }}>
+                <input type="text" placeholder="Team Name" value={teamName} onChange={e => setTeamName(e.target.value)} required style={{ flex: 2, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} />
+                <input type="text" placeholder="Short" value={shortName} onChange={e => setShortName(e.target.value)} required style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} />
+                <button type="submit" style={{ padding: '0 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Add</button>
+              </form>
+            </div>
+
+            <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 15px 0' }}>2. Players</h3>
+              <form onSubmit={handleAddPlayer}>
+                <input type="text" placeholder="Player Name" value={playerName} onChange={e => setPlayerName(e.target.value)} required style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: '12px', marginBottom: '10px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }} />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <select value={selectedTeamId} onChange={e => setSelectedTeamId(e.target.value)} required style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }}>
+                      <option value="" disabled>Select Team</option>
+                      {teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}
+                    </select>
+                    <button type="submit" style={{ padding: '0 20px', background: '#fff', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Draft</button>
+                </div>
+              </form>
+            </div>
+
+            <div style={{ background: '#111', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 15px 0' }}>3. Matches</h3>
+              <form onSubmit={handleAddMatch} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <select value={team1Id} onChange={e => setTeam1Id(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'none', background: '#222', color: '#fff' }}>
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}
+                </select>
+                <span style={{ fontWeight: 'bold', color: '#777' }}>VS</span>
+                <select value={team2Id} onChange={e => setTeam2Id(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '5px', border: 'non
