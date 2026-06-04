@@ -32,7 +32,7 @@ export default function FranchiseManager({ teams, players, matches, onSync }) {
     if (res.ok) {
       setTn(''); setSn(''); onSync(); alert("Franchise Profile Saved!");
     } else {
-      alert("Failed to save team (Likely duplicate name).");
+      alert("Failed to save team.");
     }
   };
 
@@ -50,12 +50,14 @@ export default function FranchiseManager({ teams, players, matches, onSync }) {
     e.preventDefault();
     if(t1 === t2) return alert("Select distinct squads!");
 
-    // FIXED: Maps standard uppercase formats string values to clear backend constraints
+    // Universal payload tracking to account for controllers expecting flat values
     const payload = {
+      team1Id: t1.toString(),
+      team2Id: t2.toString(),
       team1: { id: parseInt(t1) },
       team2: { id: parseInt(t2) },
       totalOvers: parseInt(ovs),
-      matchFormat: fmt, 
+      matchFormat: fmt,
       status: 'LIVE'
     };
 
@@ -135,4 +137,3 @@ export default function FranchiseManager({ teams, players, matches, onSync }) {
     </div>
   );
 }
-
