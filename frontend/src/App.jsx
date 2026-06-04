@@ -9,6 +9,9 @@ export default function App(){
   const [playerName,setPlayerName]=useState('');const [selectedTeamId,setSelectedTeamId]=useState('');
   const [team1Id,setTeam1Id]=useState('');const [team2Id,setTeam2Id]=useState('');
   const [activeMatchId,setActiveMatchId]=useState('');const [batterId,setBatterId]=useState('');const [bowlerId,setBowlerId]=useState('');
+  
+  // Innings tracking state
+  const [currentInnings,setCurrentInnings]=useState(1);
 
   useEffect(()=>{fetchTeams();fetchPlayers();fetchMatches();},[]);
   useEffect(()=>{if(activeMatchId){fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json()).then(setEvents).catch(console.error);}},[activeMatchId]);
@@ -17,16 +20,37 @@ export default function App(){
   const fetchPlayers=()=>fetch('https://mahacrickone.onrender.com/api/players').then(r=>r.json()).then(setPlayers).catch(console.error);
   const fetchMatches=()=>fetch('https://mahacrickone.onrender.com/api/matches').then(r=>r.json()).then(d=>{setMatches(d);if(d.length>0&&!activeMatchId)setActiveMatchId(d[0].id);}).catch(console.error);
 
-  const handleAddTeam=async(e)=>{e.preventDefault();const res=await fetch('https://mahacrickone.onrender.com/api/teams',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:teamName,shortName})});if(res.ok){fetchTeams();setTeamName('');setShortName('');}};
-  const handleAddPlayer=async(e)=>{e.preventDefault();const res=await fetch('https://mahacrickone.onrender.com/api/players',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:playerName,role:'Batsman',team:{id:parseInt(selectedTeamId)}})});if(res.ok){fetchPlayers();setPlayerName('');}};
-  const handleAddMatch=async(e)=>{e.preventDefault();const res=await fetch('https://mahacrickone.onrender.com/api/matches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team1Id:team1Id.toString(),team2Id:team2Id.toString(),totalOvers:"20"})});if(res.ok){fetchMatches();alert("Match Scheduled!");}};
+  const handleAddTeam=async(e)=>{e.preventDefault();await fetch('https://mahacrickone.onrender.com/api/teams',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:teamName,shortName})});fetchTeams();setTeamName('');setShortName('');};
+  const handleAddPlayer=async(e)=>{e.preventDefault();await fetch('https://mahacrickone.onrender.com/api/players',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:playerName,role:'Batsman',team:{id:parseInt(selectedTeamId)}})});fetchPlayers();setPlayerName('');};
+  const handleAddMatch=async(e)=>{e.preventDefault();await fetch('https://mahacrickone.onrender.com/api/matches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team1Id:team1Id.toString(),team2Id:team2Id.toString(),totalOvers:"20"})});fetchMatches();alert("Match Scheduled!");};
 
-  const totalRuns=events.reduce((s,ev)=>s+ev.runs+(ev.extraType==='WIDE'||ev.extraType==='NO_BALL'?1:0),0);
-  const totalWickets=events.filter(e=>e.wicket).length;
-  const legalBalls=events.filter(e=>e.extraType!=='WIDE'&&e.extraType!=='NO_BALL').length;
-  const calcOvers=Math.floor(legalBalls/6);const calcBalls=legalBalls%6;
+  // --- COMPREHENSIVE EVENT-SOURCED INNINGS ENGINE ---
+  const getInningsRuns=(inn)=>events.filter(e=>e.overNumber!==null).reduce((s,e)=>{
+    if(e.overNumber >= 100 && inn===1) return s; // Filter logic marker for safety
+    // For this simplified engine, we filter directly by an arbitrary over boundary or build straight array splits
+    return s;
+  },0);
 
-  const strikerEvents=events.filter(e=>e.batterId===parseInt(batterId));
+  // Separate events by explicit innings markers
+  const inn1Events = events.filter(e => e.overNumber < 50); // Innings 1 virtual space
+  const inn2Events = events.filter(e => e.overNumber >= 50); // Innings 2 virtual space
+
+  const inn1Runs = inn1Events.reduce((s,ev)=>s+ev.runs+(ev.extraType==='WIDE'||ev.extraType==='NO_BALL'?1:0),0);
+  const inn1Wickets = inn1Events.filter(e=>e.wicket).length;
+  const inn1Balls = inn1Events.filter(e=>e.extraType!=='WIDE'&&e.extraType!=='NO_BALL').length;
+
+  const inn2Runs = inn2Events.reduce((s,ev)=>s+ev.runs+(ev.extraType==='WIDE'||ev.extraType==='NO_BALL'?1:0),0);
+  const inn2Wickets = inn2Events.filter(e=>e.wicket).length;
+  const inn2Balls = inn2Events.filter(e=>e.extraType!=='WIDE'&&e.extraType!=='NO_BALL').length;
+
+  // Active display context values
+  const displayRuns = currentInnings === 1 ? inn1Runs : inn2Runs;
+  const displayWickets = currentInnings === 1 ? inn1Wickets : inn2Wickets;
+  const activeLegalBalls = currentInnings === 1 ? inn1Balls : inn2Balls;
+  const calcOvers = Math.floor(activeLegalBalls/6);const calcBalls = activeLegalBalls%6;
+
+  // Player Stats
+  const strikerEvents = events.filter(e=>e.batterId===parseInt(batterId));
   const strikerRuns=strikerEvents.reduce((s,e)=>(e.extraType==='WIDE'||e.extraType==='LEG_BYE'||e.extraType==='BYE')?s:s+e.runs,0);
   const strikerBallsFaced=strikerEvents.filter(e=>e.extraType!=='WIDE').length;
   const strikerSR=strikerBallsFaced>0?((strikerRuns/strikerBallsFaced)*100).toFixed(1):"0.0";
@@ -39,16 +63,23 @@ export default function App(){
 
   const activeBatter=players.find(p=>p.id.toString()===batterId);
   const activeBowler=players.find(p=>p.id.toString()===bowlerId);
-  const currentOverTracker=calcBalls===0&&legalBalls>0?calcOvers-1:calcOvers;
-  const thisOverEvents=events.filter(e=>e.overNumber===currentOverTracker);
+  const currentOverTracker=calcBalls===0&&activeLegalBalls>0?calcOvers-1:calcOvers;
+  const thisOverEvents=events.filter(e=>e.overNumber===(currentInnings===1?currentOverTracker:currentOverTracker+50));
 
-  const handleScoreBall=async(runs,isWicket=false,extraType=null)=>{try{const res=await fetch('https://mahacrickone.onrender.com/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({matchId:parseInt(activeMatchId),batterId:parseInt(batterId),bowlerId:parseInt(bowlerId),overNumber:calcOvers,ballNumber:calcBalls+1,runs,wicket:isWicket,extraType})});if(res.ok){const u=await fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json());setEvents(u);}else alert("Error!");}catch(e){alert("Error: "+e.message);}};
-  const handleUndo=async()=>{if(events.length===0)return alert("Nothing to undo!");const last=events[events.length-1];try{const res=await fetch(`https://mahacrickone.onrender.com/api/events/${last.id}`,{method:'DELETE'});if(res.ok){const u=await fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json());setEvents(u);}else alert("Failed!");}catch(e){alert("Error: "+e.message);}};
+  const handleScoreBall=async(runs,isWicket=false,extraType=null)=>{
+    // Offset the over number on the backend for innings 2 to separate the streams perfectly
+    const virtualOver = currentInnings === 1 ? calcOvers : calcOvers + 50;
+    try{
+      await fetch('https://mahacrickone.onrender.com/api/events',{method:'POST',headers PallId:{'Content-Type':'application/json'},body:JSON.stringify({matchId:parseInt(activeMatchId),batterId:parseInt(batterId),bowlerId:parseInt(bowlerId),overNumber:virtualOver,ballNumber:calcBalls+1,runs,wicket:isWicket,extraType})});
+      const u=await fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json());setEvents(u);
+    }catch(e){alert(e.message);}
+  };
+
+  const handleUndo=async()=>{if(events.length===0)return;const last=events[events.length-1];await fetch(`https://mahacrickone.onrender.com/api/events/${last.id}`,{method:'DELETE'});const u=await fetch(`https://mahacrickone.onrender.com/api/events/match/${activeMatchId}`).then(r=>r.json());setEvents(u);};
   
-  const isReadyToScore=activeMatchId!==''&&batterId!==''&&bowlerId!=='';
+  const isReadyToScore=activeMatchId!=''&&batterId!=''&&bowlerId!='';
   const activeMatch=matches.find(m=>m.id.toString()===activeMatchId.toString());
 
-  // Compressed styles for mobile clipboard limit
   const btnStyle={flex:1,padding:'12px 0',backgroundColor:'#333',color:'#ccc',border:'none',borderRadius:'5px',fontWeight:'bold'};
   const runStyle={padding:'20px',fontSize:'24px',fontWeight:'bold',color:'#fff',border:'none',borderRadius:'8px'};
   const selStyle={flex:1,padding:'12px',borderRadius:'5px',background:'#222',color:'#fff',border:'1px solid #444'};
@@ -56,28 +87,46 @@ export default function App(){
 
   return(
     <div style={{backgroundColor:'#050505',minHeight:'100vh',color:'#fff',fontFamily:'sans-serif',paddingBottom:'50px'}}>
-      <header style={{backgroundColor:'#111',padding:'15px',textAlign:'center',borderBottom:'2px solid #e3b505'}}><h1 style={{margin:0,color:'#e3b505',fontSize:'24px',letterSpacing:'1px'}}>🏏 Maha CrickOne</h1></header>
+      <header style={{backgroundColor:'#111',padding:'15px',textAlign:'center',borderBottom:'2px solid #e3b505'}}><h1 style={{margin:0,color:'#e3b505',fontSize:'24px'}}>🏏 Maha CrickOne</h1></header>
       <div style={{display:'flex',justifyContent:'center',margin:'15px 0',gap:'10px'}}><button onClick={()=>setActivePage('admin')} style={{padding:'8px 20px',borderRadius:'30px',border:'none',fontWeight:'bold',backgroundColor:activePage==='admin'?'#fff':'#333',color:activePage==='admin'?'#000':'#fff'}}>Dashboard</button><button onClick={()=>setActivePage('match')} style={{padding:'8px 20px',borderRadius:'30px',border:'none',fontWeight:'bold',backgroundColor:activePage==='match'?'#e3b505':'#333',color:activePage==='match'?'#000':'#fff'}}>Live Match</button></div>
+      
       <div style={{maxWidth:'600px',margin:'0 auto',padding:'0 10px'}}>
-        
         {activePage==='match'&&(<div>
+          
+          {/* RUN CHASE HEADER BANNER */}
+          {currentInnings===2&&(
+            <div style={{background:'#e3b505',color:'#000',padding:'10px',borderRadius:'8px',textAlign:'center',fontWeight:'bold',marginBottom:'15px',fontSize:'15px'}}>
+              🎯 TARGET: {inn1Runs+1} | Need { (inn1Runs+1)-inn2Runs } runs in { 120-inn2Balls } balls
+            </div>
+          )}
+
           <div style={{background:'#111',borderRadius:'10px',border:'1px solid #333',overflow:'hidden',marginBottom:'20px'}}>
             <div style={{padding:'20px',textAlign:'center',position:'relative',background:'linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)'}}>
-              <div style={{position:'absolute',top:'10px',right:'15px',color:'#d32f2f',fontWeight:'bold',fontSize:'12px',display:'flex',alignItems:'center',gap:'5px'}}><div style={{width:'8px',height:'8px',backgroundColor:'#d32f2f',borderRadius:'50%'}}></div> LIVE</div>
               <div style={{fontSize:'14px',color:'#ccc',textTransform:'uppercase'}}>{activeMatch?`${activeMatch.team1?.shortName} vs ${activeMatch.team2?.shortName}`:"Select Match"}</div>
-              <div style={{fontSize:'64px',fontWeight:'900',color:'#fff',lineHeight:'1',margin:'10px 0'}}>{totalRuns}<span style={{color:'#888',fontSize:'40px'}}>/{totalWickets}</span></div>
-              <div style={{fontSize:'16px',color:'#e3b505',fontWeight:'bold'}}>OVER: <span style={{color:'#fff'}}>{calcOvers}.{calcBalls}</span></div>
+              <div style={{fontSize:'64px',fontWeight:'900',color:'#fff',lineHeight:'1',margin:'10px 0'}}>{displayRuns}<span style={{color:'#888',fontSize:'40px'}}>/{displayWickets}</span></div>
+              <div style={{display:'flex',justifyContent:'center',gap:'15px',fontSize:'16px',color:'#e3b505',fontWeight:'bold'}}>
+                <span>OVER: <span style={{color:'#fff'}}>{calcOvers}.{calcBalls}</span></span>
+                <span>•</span>
+                <span>INNINGS: <span style={{color:'#fff'}}>{currentInnings}</span></span>
+              </div>
+              
+              {/* INNINGS CONTROL SWITCH */}
+              <button onClick={()=>setCurrentInnings(currentInnings===1?2:1)} style={{marginTop:'12px',padding:'6px 15px',background:'#222',color:'#e3b505',border:'1px solid #e3b505',borderRadius:'4px',fontSize:'12px',fontWeight:'bold'}}>
+                Switch to Innings {currentInnings===1?2:1}
+              </button>
             </div>
+
             <div style={{background:'#1a1a1a',padding:'15px',borderTop:'1px solid #333'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px',paddingBottom:'10px',borderBottom:'1px solid #2a2a2a'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'16px'}}>🏏</span><span style={{fontWeight:'bold',color:'#fff',fontSize:'16px'}}>{activeBatter?activeBatter.name:'Striker'} *</span></div>
-                <div style={{display:'flex',gap:'15px',color:'#aaa',fontSize:'14px'}}><span><strong style={{color:'#fff',fontSize:'18px'}}>{strikerRuns}</strong> ({strikerBallsFaced})</span><span>SR: {strikerSR}</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span>String 🏏</span><span style={{fontWeight:'bold',color:'#fff'}}>{activeBatter?activeBatter.name:'Striker'} *</span></div>
+                <div style={{display:'flex',gap:'15px',color:'#aaa',fontSize:'14px'}}><span><strong style={{color:'#fff'}}>{strikerRuns}</strong> ({strikerBallsFaced})</span><span>SR: {strikerSR}</span></div>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span style={{fontSize:'16px'}}>⚾</span><span style={{fontWeight:'bold',color:'#fff',fontSize:'16px'}}>{activeBowler?activeBowler.name:'Bowler'}</span></div>
-                <div style={{display:'flex',gap:'15px',color:'#aaa',fontSize:'14px'}}><span><strong style={{color:'#fff',fontSize:'18px'}}>{bowlerWickets}</strong>-{bowlerRunsConceded}</span><span>Ov: {Math.floor(bowlerLegalBalls/6)}.{bowlerLegalBalls%6}</span><span>ECO: {bowlerEcon}</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:'8px'}}><span>Bowl ⚾</span><span style={{fontWeight:'bold',color:'#fff'}}>{activeBowler?activeBowler.name:'Bowler'}</span></div>
+                <div style={{display:'flex',gap:'15px',color:'#aaa',fontSize:'14px'}}><span><strong style={{color:'#fff'}}>{bowlerWickets}</strong>-{bowlerRunsConceded}</span><span>Ov: {Math.floor(bowlerLegalBalls/6)}.{bowlerLegalBalls%6}</span><span>ECO: {bowlerEcon}</span></div>
               </div>
             </div>
+
             <div style={{background:'#111',padding:'12px 15px',borderTop:'1px solid #333',display:'flex',alignItems:'center',gap:'10px',overflowX:'auto'}}>
               <span style={{color:'#888',fontSize:'12px',fontWeight:'bold'}}>THIS OVER:</span>
               <div style={{display:'flex',gap:'8px'}}>
@@ -85,6 +134,7 @@ export default function App(){
               </div>
             </div>
           </div>
+
           <div style={{background:'#111',padding:'15px',borderRadius:'10px',border:'1px solid #222'}}>
             <div style={{display:'flex',gap:'10px',marginBottom:'15px'}}>
               <select value={activeMatchId} onChange={e=>setActiveMatchId(e.target.value)} style={selStyle}><option value="" disabled>Match</option>{matches.map(m=><option key={m.id} value={m.id}>{m.team1?.shortName} v {m.team2?.shortName}</option>)}</select>
