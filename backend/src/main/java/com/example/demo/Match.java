@@ -3,9 +3,8 @@ package com.example.demo.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "crickone_matches") // This forces a brand-new, clean table!
+@Table(name = "matches")
 public class Match {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -19,21 +18,22 @@ public class Match {
     private Team team2;
 
     private int totalOvers;
-    private String status; 
+    private String matchFormat; // T1, T5, T10, T20, ODI, TEST
+    private String status; // SCHEDULED, LIVE, COMPLETED
+    private String matchResult; // e.g., "RCB won by 5 runs"
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    
     public Team getTeam1() { return team1; }
     public void setTeam1(Team team1) { this.team1 = team1; }
-    
     public Team getTeam2() { return team2; }
     public void setTeam2(Team team2) { this.team2 = team2; }
-    
     public int getTotalOvers() { return totalOvers; }
     public void setTotalOvers(int totalOvers) { this.totalOvers = totalOvers; }
-    
+    public String getMatchFormat() { return matchFormat; }
+    public void setMatchFormat(String matchFormat) { this.matchFormat = matchFormat; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getMatchResult() { return matchResult; }
+    public void setMatchResult(String matchResult) { this.matchResult = matchResult; }
 }
