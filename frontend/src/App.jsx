@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import AdminDashboard from './AdminDashboard';
-import Scoreboard from './Scoreboard';
-import ScoringPad from './ScoringPad';
+import AdminDashboard from './AdminDashboard.jsx';
+import Scoreboard from './Scoreboard.jsx';
+import ScoringPad from './ScoringPad.jsx';
 
 export default function App() {
   const [activePage, setActivePage] = useState('match');
-  const [teams, setTeams] = useState([]); const [players, setPlayers] = useState([]);
-  const [matches, setMatches] = useState([]); const [events, setEvents] = useState([]);
+  const [teams, setTeams] = useState([]); 
+  const [players, setPlayers] = useState([]);
+  const [matches, setMatches] = useState([]); 
+  const [events, setEvents] = useState([]);
   const [activeMatchId, setActiveMatchId] = useState('');
-  const [batterId, setBatterId] = useState(''); const [bowlerId, setBowlerId] = useState('');
+  const [batterId, setBatterId] = useState(''); 
+  const [bowlerId, setBowlerId] = useState('');
   const [currentInnings, setCurrentInnings] = useState(1);
 
   useEffect(() => { loadCoreData(); }, []);
@@ -26,22 +29,23 @@ export default function App() {
   };
 
   const handleAddTeam = async (name, shortName) => {
-    await fetch('https://mahacrickone.onrender.com/api/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, shortName }) });
+    const res = await fetch('https://mahacrickone.onrender.com/api/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, shortName }) });
+    if (!res.ok) alert("Franchise Name or Short Name already exists!");
     loadCoreData();
   };
 
   const handleAddPlayer = async (name, teamId) => {
-    await fetch('https://mahacrickone.onrender.com/api/players', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, role: 'Batsman', team: { id: parseInt(teamId) } }) });
+    const res = await fetch('https://mahacrickone.onrender.com/api/players', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, role: 'Batsman', team: { id: parseInt(teamId) } }) });
+    if (!res.ok) alert("Player already drafted to this team lineup!");
     loadCoreData();
   };
 
   const handleAddMatch = async (team1Id, team2Id, totalOvers) => {
     await fetch('https://mahacrickone.onrender.com/api/matches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ team1Id, team2Id, totalOvers }) });
     loadCoreData();
-    alert("Match Scheduled!");
+    alert("Match Scheduled Successfully!");
   };
 
-  // Event Engine Parsing
   const inn1Events = events.filter(e => e.overNumber < 50);
   const inn2Events = events.filter(e => e.overNumber >= 50);
 
@@ -91,7 +95,7 @@ export default function App() {
 
   return (
     <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif', paddingBottom: '50px' }}>
-      <header style={{ backgroundColor: '#111', padding: '15px', textAlign: 'center', borderBottom: '2px solid #e3b505' }}><h1 style={{ margin: 0, color: '#e3b505', fontSize: '24px' }}>🏏 Maha CrickOne</h1></header>
+      <header style={{ backgroundColor: '#111', padding: '15px', textAlign: 'center', borderBottom: '2px solid #e3b505' }}><h1 style={{ margin: 0, color: '#e3b505', fontSize: '24px' }}> McKinley CrickOne</h1></header>
       <div style={{ display: 'flex', justifyContent: 'center', margin: '15px 0', gap: '10px' }}>
         <button onClick={() => setActivePage('admin')} style={{ padding: '8px 20px', borderRadius: '30px', border: 'none', fontWeight: 'bold', backgroundColor: activePage === 'admin' ? '#fff' : '#333', color: activePage === 'admin' ? '#000' : '#fff' }}>Dashboard</button>
         <button onClick={() => setActivePage('match')} style={{ padding: '8px 20px', borderRadius: '30px', border: 'none', fontWeight: 'bold', backgroundColor: activePage === 'match' ? '#e3b505' : '#333', color: activePage === 'match' ? '#000' : '#fff' }}>Live Match</button>
