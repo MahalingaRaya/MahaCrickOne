@@ -1,60 +1,38 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import FranchiseManager from './FranchiseManager';
-import ScorecardTables from './ScorecardTables';
-import BallTimeline from './BallTimeline';
+import FranchiseManager from './FranchiseManager.jsx';
+import ScorecardTables from './ScorecardTables.jsx';
+import BallTimeline from './BallTimeline.jsx';
 
 export default function App() {
   const [view, setView] = useState('match');
-  const [teams, setTeams] = useState([]); 
-  const [players, setPlayers] = useState([]);
-  const [matches, setMatches] = useState([]); 
-  const [events, setEvents] = useState([]);
+  const [teams, setTeams] = useState([]); const [players, setPlayers] = useState([]);
+  const [matches, setMatches] = useState([]); const [events, setEvents] = useState([]);
   
-  // Selection Context
   const [mId, setMId] = useState('');
-  const [strikerId, setStrikerId] = useState(''); 
-  const [nonStrikerId, setNonStrikerId] = useState('');
-  const [bowlerId, setBowlerId] = useState(''); 
-  const [inn, setInn] = useState(1);
+  const [strikerId, setStrikerId] = useState(''); const [nonStrikerId, setNonStrikerId] = useState('');
+  const [bowlerId, setBowlerId] = useState(''); const [inn, setInn] = useState(1);
 
   useEffect(() => { syncData(); }, []);
   useEffect(() => { if (mId) fetchEvents(); }, [mId]);
 
   const syncData = () => {
-    fetch('https://mahacrickone.onrender.com/api/teams')
-      .then(r => r.json())
-      .then(setTeams)
-      .catch(err => console.error("Teams fetch failed", err));
-      
-    fetch('https://mahacrickone.onrender.com/api/players')
-      .then(r => r.json())
-      .then(setPlayers)
-      .catch(err => console.error("Players fetch failed", err));
-      
-    fetch('https://mahacrickone.onrender.com/api/matches')
-      .then(r => r.json())
-      .then(d => { 
-        setMatches(d); 
-        if(d && d.length > 0 && !mId) {
-          setMId(d[d.length - 1].id.toString()); 
-        }
-      })
-      .catch(err => console.error("Matches fetch failed", err));
+    fetch('https://mahacrickone.onrender.com/api/teams').then(r => r.json()).then(setTeams).catch(console.error);
+    fetch('https://mahacrickone.onrender.com/api/players').then(r => r.json()).then(setPlayers).catch(console.error);
+    fetch('https://mahacrickone.onrender.com/api/matches').then(r => r.json()).then(d => { 
+      setMatches(d); 
+      if(d && d.length > 0 && !mId) setMId(d[d.length - 1].id.toString()); 
+    }).catch(console.error);
   };
 
   const fetchEvents = () => {
     if (!mId) return;
-    fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`)
-      .then(r => r.json())
-      .then(setEvents)
-      .catch(err => console.error("Events fetch failed", err));
+    fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r => r.json()).then(setEvents).catch(console.error);
   };
 
   const currentMatch = matches.find(m => m.id.toString() === mId.toString()) || null;
-  const totalLimitOvers = currentMatch ? parseInt(currentMatch.totalOvers || 20) : 20;
+  const totalLimitOvers = currentMatch ? parseInt(currentMatch.totalOvers || 1) : 1;
 
-  // Compute Innings Calculations safely
   const innEvents = events.filter(e => inn === 1 ? e.inningsNumber === 1 : e.inningsNumber === 2);
   const totalRuns = innEvents.reduce((s, e) => s + e.runsScored + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0);
   const totalWickets = innEvents.filter(e => e.isWicket).length;
@@ -64,152 +42,95 @@ export default function App() {
 
   const firstInningsRuns = events.filter(e => e.inningsNumber === 1).reduce((s, e) => s + e.runsScored + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0);
   const targetRuns = inn === 2 ? firstInningsRuns + 1 : 0;
-  
   const runsNeeded = inn === 2 ? Math.max(0, targetRuns - totalRuns) : 0;
   const ballsRemaining = inn === 2 ? Math.max(0, (totalLimitOvers * 6) - legalBalls) : 0;
 
-  // Automatic Strike Rotation logic
   const handleScoreInput = async (runs, isWkt = false, extra = 'NONE') => {
-    if (!mId || !strikerId || !bowlerId) return alert("Please select Striker and Bowler first!");
-    if (legalBalls >= totalLimitOvers * 6) return alert("Innings completed!");
+    if (!mId || !strikerId || !bowlerId) return alert("Select Striker and Bowler first!");
+    if (legalBalls >= totalLimitOvers * 6) return alert("Innings finished!");
 
-    let nextStriker = strikerId;
-    let nextNonStriker = nonStrikerId;
-
-    if (!isWkt && (runs === 1 || runs === 3)) {
-      nextStriker = nonStrikerId;
-      nextNonStriker = strikerId;
-    }
+    let nextStriker = strikerId; let nextNonStriker = nonStrikerId;
+    if (!isWkt && (runs === 1 || runs === 3)) { nextStriker = nonStrikerId; nextNonStriker = strikerId; }
 
     const isOverComplete = extra === 'NONE' || extra === 'BYE' || extra === 'LEG_BYE' ? (currentBall + 1) === 6 : false;
     if (isOverComplete) {
-      const temp = nextStriker;
-      nextStriker = nextNonStriker;
-      nextNonStriker = temp;
-      alert(`Over ${currentOver + 1} completed! Please rotate strike and change bowler.`);
+      const temp = nextStriker; nextStriker = nextNonStriker; nextNonStriker = temp;
+      alert(`Over complete! Please change bowler.`);
     }
 
     await fetch('https://mahacrickone.onrender.com/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        matchId: parseInt(mId), 
-        inningsNumber: inn, 
-        overNumber: currentOver, 
-        ballNumber: currentBall + 1,
-        strikerId: parseInt(strikerId), 
-        nonStrikerId: nonStrikerId ? parseInt(nonStrikerId) : null, 
-        bowlerId: parseInt(bowlerId),
-        runsScored: runs, 
-        isWicket: isWkt, 
-        extraType: extra
+        matchId: parseInt(mId), inningsNumber: inn, overNumber: currentOver, ballNumber: currentBall + 1,
+        strikerId: parseInt(strikerId), nonStrikerId: nonStrikerId ? parseInt(nonStrikerId) : null, bowlerId: parseInt(bowlerId),
+        runsScored: runs, isWicket: isWkt, extraType: extra
       })
     });
-
-    setStrikerId(nextStriker);
-    setNonStrikerId(nextNonStriker);
-    fetchEvents();
+    setStrikerId(nextStriker); setNonStrikerId(nextNonStriker); fetchEvents();
   };
 
-  const handleUndo = async () => {
-    if (!events.length) return;
-    await fetch(`https://mahacrickone.onrender.com/api/events/${events[events.length - 1].id}`, { method: 'DELETE' });
-    fetchEvents();
-  };
-
-  // Safe Extraction with Null Fallbacks
   const battingTeamId = currentMatch ? (inn === 1 ? currentMatch.team1?.id : currentMatch.team2?.id) : null;
   const bowlingTeamId = currentMatch ? (inn === 1 ? currentMatch.team2?.id : currentMatch.team1?.id) : null;
+  const battingTeamPlayers = players.filter(p => p.team?.id === battingTeamId);
+  const bowlingTeamPlayers = players.filter(p => p.team?.id === bowlingTeamId);
+
+  const btn = { flex: 1, padding: '12px 0', backgroundColor: '#252525', color: '#ccc', border: 'none', borderRadius: '5px', fontWeight: 'bold' };
 
   return (
     <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' }}>
       <header style={{ backgroundColor: '#111', padding: '15px', textAlign: 'center', borderBottom: '2px solid #e3b505' }}>
         <h1 style={{ margin: 0, color: '#e3b505', fontSize: '22px' }}>🏏 MAHA CRICKONE PRO</h1>
       </header>
-
       <div style={{ display: 'flex', justifyContent: 'center', margin: '15px 0', gap: '10px' }}>
         <button onClick={() => setView('match')} style={{ padding: '8px 20px', borderRadius: '30px', border: 'none', fontWeight: 'bold', backgroundColor: view==='match'?'#e3b505':'#222', color: view==='match'?'#000':'#fff' }}>Live Match</button>
         <button onClick={() => setView('admin')} style={{ padding: '8px 20px', borderRadius: '30px', border: 'none', fontWeight: 'bold', backgroundColor: view==='admin'?'#fff':'#222', color: view==='admin'?'#000':'#fff' }}>Franchise Admin</button>
       </div>
-
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 10px' }}>
         {view === 'match' && (
           <div>
-            {currentMatch ? (
-              <>
-                {/* Scorecard Display */}
-                <div style={{ background: '#111', borderRadius: '12px', border: '1px solid #333', padding: '20px', textAlign: 'center', marginBottom: '15px' }}>
-                  <h2 style={{ margin: '0 0 5px 0', fontSize: '16px', color: '#aaa' }}>
-                    {currentMatch?.team1?.shortName || 'T1'} VS {currentMatch?.team2?.shortName || 'T2'} ({currentMatch?.matchFormat || 'T20'})
-                  </h2>
-                  <div style={{ fontSize: '54px', fontWeight: '900', margin: '10px 0' }}>{totalRuns}/{totalWickets}</div>
-                  <div style={{ fontSize: '16px', color: '#e3b505', fontWeight: 'bold' }}>OVERS: {currentOver}.{currentBall} / {totalLimitOvers}.0</div>
-                  {inn === 2 && <div style={{ color: '#fff', background: '#b8860b', padding: '6px', borderRadius: '5px', marginTop: '10px', fontSize: '13px' }}>Need {runsNeeded} runs in {ballsRemaining} balls</div>}
-                </div>
-
-                {/* Match Selection Option Dropdown */}
-                <div style={{ marginBottom: '15px' }}>
-                  <select value={mId} onChange={e => { setMId(e.target.value); setStrikerId(''); setNonStrikerId(''); setBowlerId(''); }} style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
-                    {matches.map(m => <option key={m.id} value={m.id}>{m.team1?.shortName} vs {m.team2?.shortName} ({m.matchFormat})</option>)}
-                  </select>
-                </div>
-
-                {/* Player Selectors */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-                  <select value={strikerId} onChange={e=>setStrikerId(e.target.value)} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
-                    <option value="">* Striker</option>
-                    {players.filter(p=>p.team?.id===battingTeamId).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <select value={nonStrikerId} onChange={e=>setNonStrikerId(e.target.value)} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
-                    <option value="">Non-Striker</option>
-                    {players.filter(p=>p.team?.id===battingTeamId).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <select value={bowlerId} onChange={e=>setBowlerId(e.target.value)} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
-                    <option value="">Bowler</option>
-                    {players.filter(p=>p.team?.id===bowlingTeamId).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-
-                {/* Performance Tables */}
-                <ScorecardTables players={players} events={innEvents} battingTeamId={battingTeamId} bowlingTeamId={bowlingTeamId} />
-
-                {/* Visual Timeline Ticker */}
-                <BallTimeline events={innEvents} currentOver={currentOver} />
-
-                {/* Action Buttons Panel */}
-                <div style={{ background: '#111', padding: '15px', borderRadius: '12px', border: '1px solid #222', marginTop: '15px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
-                    {[0, 1, 2, 3].map(r => <button key={r} onClick={() => handleScoreInput(r)} style={{ padding: '15px', background: '#252525', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px' }}>{r}</button>)}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
-                    <button onClick={() => handleScoreInput(4)} style={{ padding: '15px', background: '#1b5e20', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px' }}>4</button>
-                    <button onClick={() => handleScoreInput(6)} style={{ padding: '15px', background: '#1b5e20', color: '#e3b505', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px' }}>6</button>
-                    <button onClick={() => handleScoreInput(0, true)} style={{ padding: '15px', background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px' }}>WICKET</button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                    <button onClick={() => handleScoreInput(0, false, 'WIDE')} style={{ padding: '12px 5px', background: '#b8860b', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>WD</button>
-                    <button onClick={() => handleScoreInput(0, false, 'NO_BALL')} style={{ padding: '12px 5px', background: '#b8860b', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>NB</button>
-                    <button onClick={() => handleScoreInput(1, false, 'BYE')} style={{ padding: '12px 5px', background: '#333', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>BYE</button>
-                    <button onClick={() => handleScoreInput(1, false, 'LEG_BYE')} style={{ padding: '12px 5px', background: '#333', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>LB</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                    <button onClick={handleUndo} style={{ flex: 1, padding: '12px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>UNDO LAST BALL</button>
-                    {inn === 1 && <button onClick={() => { setInn(2); setStrikerId(''); setNonStrikerId(''); setBowlerId(''); }} style={{ flex: 1, padding: '12px', background: '#e3b505', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>END INNINGS</button>}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#aaa', background: '#111', borderRadius: '12px', border: '1px solid #333' }}>
-                <p style={{ margin: '0 0 15px 0' }}>No live matches found in database.</p>
-                <button onClick={() => setView('admin')} style={{ padding: '10px 20px', background: '#e3b505', color: '#000', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Go to Franchise Admin & Create Match</button>
+            <div style={{ background: '#111', borderRadius: '12px', border: '1px solid #333', padding: '20px', textAlign: 'center', marginBottom: '15px' }}>
+              <h2>{currentMatch?.team1?.shortName || 'T1'} VS {currentMatch?.team2?.shortName || 'T2'} ({currentMatch?.matchFormat || 'T1'})</h2>
+              <div style={{ fontSize: '54px', fontWeight: '900', margin: '10px 0' }}>{totalRuns}/{totalWickets}</div>
+              <div style={{ fontSize: '16px', color: '#e3b505', fontWeight: 'bold' }}>OVERS: {currentOver}.{currentBall} / {totalLimitOvers}.0</div>
+              {inn === 2 && <div style={{ color: '#fff', background: '#b8860b', padding: '6px', borderRadius: '5px', marginTop: '10px' }}>Need {runsNeeded} runs in {ballsRemaining} balls</div>}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+              <select value={strikerId} onChange={e=>setStrikerId(e.target.value)} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
+                <option value="">* Striker</option>{battingTeamPlayers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <select value={nonStrikerId} onChange={e=>setNonStrikerId(e.target.value)} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
+                <option value="">Non-Striker</option>{battingTeamPlayers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <select value={bowlerId} onChange={e=>setBowlerId(e.target.value)} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
+                <option value="">Bowler</option>{bowlingTeamPlayers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <ScorecardTables players={players} events={innEvents} battingTeamId={battingTeamId} bowlingTeamId={bowlingTeamId} strikerId={strikerId} />
+            <BallTimeline events={innEvents} currentOver={currentOver} />
+            <div style={{ background: '#111', padding: '15px', borderRadius: '12px', border: '1px solid #222', marginTop: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                {[0, 1, 2, 3].map(r => <button key={r} onClick={() => handleScoreInput(r)} style={btn}>{r}</button>)}
               </div>
-            )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                <button onClick={() => handleScoreInput(4)} style={{ ...btn, background: '#1b5e20' }}>4</button>
+                <button onClick={() => handleScoreInput(6)} style={{ ...btn, background: '#1b5e20', color: '#e3b505' }}>6</button>
+                <button onClick={() => handleScoreInput(0, true)} style={{ ...btn, background: '#d32f2f' }}>WICKET</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                <button onClick={() => handleScoreInput(0, false, 'WIDE')} style={btn}>WD</button>
+                <button onClick={() => handleScoreInput(0, false, 'NO_BALL')} style={btn}>NB</button>
+                <button onClick={() => handleScoreInput(1, false, 'BYE')} style={btn}>BYE</button>
+                <button onClick={() => handleScoreInput(1, false, 'LEG_BYE')} style={btn}>LB</button>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button onClick={() => { if(events.length) { fetch(`https://mahacrickone.onrender.com/api/events/${events[events.length-1].id}`,{method:'DELETE'}).then(fetchEvents); } }} style={{ flex: 1, padding: '12px', background: '#444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>UNDO</button>
+                {inn === 1 && <button onClick={() => { setInn(2); setStrikerId(''); setNonStrikerId(''); setBowlerId(''); }} style={{ flex: 1, padding: '12px', background: '#e3b505', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>END INNINGS</button>}
+              </div>
+            </div>
           </div>
         )}
-
-        {view === 'admin' && (
-          <FranchiseManager teams={teams} players={players} matches={matches} onSync={syncData} />
-        )}
+        {view === 'admin' && <FranchiseManager teams={teams} players={players} matches={matches} onSync={syncData} />}
       </div>
     </div>
   );
