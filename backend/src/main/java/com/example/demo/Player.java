@@ -3,11 +3,8 @@ package com.example.demo.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "players", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"name", "team_id"})
-})
+@Table(name = "players")
 public class Player {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,7 +12,8 @@ public class Player {
     @Column(nullable = false)
     private String name;
 
-    private String role;
+    @Column(nullable = false)
+    private String role; // BATSMAN, BOWLER, ALL_ROUNDER, WICKET_KEEPER
 
     @ManyToOne
     @JoinColumn(name = "team_id")
