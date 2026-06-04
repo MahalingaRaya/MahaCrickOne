@@ -20,7 +20,6 @@ export default function App() {
   useEffect(() => { syncData(); }, []);
   useEffect(() => { if (mId) fetchEvents(); }, [mId]);
 
-  // SAFE FETCHING: Guarantees arrays are loaded
   const syncData = () => {
     fetch('https://mahacrickone.onrender.com/api/teams').then(r=>r.json()).then(d=>setTeams(Array.isArray(d)?d:[])).catch(()=>{});
     fetch('https://mahacrickone.onrender.com/api/players').then(r=>r.json()).then(d=>setPlayers(Array.isArray(d)?d:[])).catch(()=>{});
@@ -36,17 +35,33 @@ export default function App() {
     fetch(`https://mahacrickone.onrender.com/api/events/match/${mId}`).then(r=>r.json()).then(d=>setEvents(Array.isArray(d)?d:[])).catch(()=>{});
   };
 
+  // Safe mappings for original backend structure
   const currentMatch = Array.isArray(matches) ? matches.find(m => m.id.toString() === mId.toString()) : null;
   const totalLimitOvers = currentMatch ? parseInt(currentMatch.totalOvers || 1) : 1;
 
-  const innEvents = Array.isArray(events) ? events.filter(e => inn === 1 ? e.inningsNumber === 1 : e.inningsNumber === 2) : [];
+  const team1Obj = teams.find(t => t.id.toString() === currentMatch?.team1Id?.toString());
+  const team2Obj = teams.find(t => t.id.toString() === currentMatch?.team2Id?.toString());
+
+  const battingTeamId = currentMatch ? (inn === 1 ? team1Obj?.id : team2Obj?.id) : null;
+  const bowlingTeamId = currentMatch ? (inn === 1 ? team2Obj?.id : team1Obj?.id) : null;
+
+  // Translate old event data (runs, wicket, batterId) to the new pro variables
+  const rawInnEvents = Array.isArray(events) ? events.filter(e => inn === 1 ? e.overNumber < 50 : e.overNumber >= 50) : [];
+  const innEvents = rawInnEvents.map(e => ({
+    ...e,
+    runsScored: e.runs,
+    isWicket: e.wicket,
+    strikerId: e.batterId,
+    overNumber: e.overNumber >= 50 ? e.overNumber - 50 : e.overNumber
+  }));
+
   const totalRuns = innEvents.reduce((s, e) => s + (e.runsScored || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0);
   const totalWickets = innEvents.filter(e => e.isWicket).length;
   const legalBalls = innEvents.filter(e => e.extraType !== 'WIDE' && e.extraType !== 'NO_BALL').length;
   const currentOver = Math.floor(legalBalls / 6);
   const currentBall = legalBalls % 6;
 
-  const firstInningsRuns = Array.isArray(events) ? events.filter(e => e.inningsNumber === 1).reduce((s, e) => s + (e.runsScored || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0) : 0;
+  const firstInningsRuns = Array.isArray(events) ? events.filter(e => e.overNumber < 50).reduce((s, e) => s + (e.runs || 0) + (e.extraType === 'WIDE' || e.extraType === 'NO_BALL' ? 1 : 0), 0) : 0;
   const targetRuns = inn === 2 ? firstInningsRuns + 1 : 0;
   const runsNeeded = inn === 2 ? Math.max(0, targetRuns - totalRuns) : 0;
   const ballsRemaining = inn === 2 ? Math.max(0, (totalLimitOvers * 6) - legalBalls) : 0;
@@ -64,20 +79,24 @@ export default function App() {
       alert(`Over complete! Please change bowler.`);
     }
 
+    // THE FIX: Sending the original event variables (batterId, runs, wicket) to DB
     await fetch('https://mahacrickone.onrender.com/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        matchId: parseInt(mId), inningsNumber: inn, overNumber: currentOver, ballNumber: currentBall + 1,
-        strikerId: parseInt(strikerId), nonStrikerId: nonStrikerId ? parseInt(nonStrikerId) : null, bowlerId: parseInt(bowlerId),
-        runsScored: runs, isWicket: isWkt, extraType: extra
+        matchId: parseInt(mId), 
+        batterId: parseInt(strikerId), 
+        bowlerId: parseInt(bowlerId),
+        overNumber: inn === 1 ? currentOver : currentOver + 50, 
+        ballNumber: currentBall + 1,
+        runs: runs, 
+        wicket: isWkt, 
+        extraType: extra
       })
     });
     setStrikerId(nextStriker); setNonStrikerId(nextNonStriker); fetchEvents();
   };
 
-  const battingTeamId = currentMatch ? (inn === 1 ? currentMatch.team1?.id : currentMatch.team2?.id) : null;
-  const bowlingTeamId = currentMatch ? (inn === 1 ? currentMatch.team2?.id : currentMatch.team1?.id) : null;
   const safePlayers = Array.isArray(players) ? players : [];
   const battingTeamPlayers = safePlayers.filter(p => p.team?.id === battingTeamId);
   const bowlingTeamPlayers = safePlayers.filter(p => p.team?.id === bowlingTeamId);
@@ -99,7 +118,7 @@ export default function App() {
             {currentMatch ? (
               <>
                 <div style={{ background: '#111', borderRadius: '12px', border: '1px solid #333', padding: '20px', textAlign: 'center', marginBottom: '15px' }}>
-                  <h2>{currentMatch?.team1?.shortName || 'T1'} VS {currentMatch?.team2?.shortName || 'T2'} ({currentMatch?.matchFormat || 'T1'})</h2>
+                  <h2>{team1Obj?.shortName || 'T1'} VS {team2Obj?.shortName || 'T2'} ({totalLimitOvers} OV)</h2>
                   <div style={{ fontSize: '54px', fontWeight: '900', margin: '10px 0' }}>{totalRuns}/{totalWickets}</div>
                   <div style={{ fontSize: '16px', color: '#e3b505', fontWeight: 'bold' }}>OVERS: {currentOver}.{currentBall} / {totalLimitOvers}.0</div>
                   {inn === 2 && <div style={{ color: '#fff', background: '#b8860b', padding: '6px', borderRadius: '5px', marginTop: '10px' }}>Need {runsNeeded} runs in {ballsRemaining} balls</div>}
@@ -107,7 +126,11 @@ export default function App() {
                 <div style={{ marginBottom: '15px' }}>
                   <select value={mId} onChange={e => { setMId(e.target.value); setStrikerId(''); setNonStrikerId(''); setBowlerId(''); }} style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', borderRadius: '5px', border: '1px solid #333' }}>
                     <option value="" disabled>Select a match</option>
-                    {matches.map(m => <option key={m.id} value={m.id}>{m.team1?.shortName} vs {m.team2?.shortName} ({m.matchFormat})</option>)}
+                    {matches.map(m => {
+                      const t1N = teams.find(t=>t.id.toString()===m.team1Id?.toString())?.shortName;
+                      const t2N = teams.find(t=>t.id.toString()===m.team2Id?.toString())?.shortName;
+                      return <option key={m.id} value={m.id}>{t1N} vs {t2N} ({m.totalOvers} OV)</option>
+                    })}
                   </select>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
