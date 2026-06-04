@@ -3,7 +3,7 @@ package com.example.demo.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "matches")
+@Table(name = "crickone_matches") // This forces a brand-new, clean table!
 public class Match {
 
     @Id
@@ -19,7 +19,7 @@ public class Match {
     private Team team2;
 
     private int totalOvers;
-    private String status; // SCHEDULED, LIVE, COMPLETED
+    private String status; 
 
     // Getters and Setters
     public Long getId() { return id; }
